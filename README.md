@@ -36,9 +36,12 @@
 | 界面：7 屏 + 生成器 + 确认框 | ✅ 完成，端到端实机验证通过 |
 | 自动锁定（5 分钟无操作） | ✅ 完成 |
 | 剪贴板 30 秒自动清空 | ✅ 完成 |
+| Android 打包（APK） | ✅ 完成，实测 15 MB / arm64 |
+| CI（fmt / clippy / test / Android check） | ✅ 完成 |
+| Release 流程（打 v* 标签 → 草稿 release） | ✅ 完成，Linux 产物 |
 | PIN / 生物识别解锁 | ⬜ 未开始，需硬件托底，见「安全边界」 |
-| 加密备份导出（`.lokal` 文件） | ⬜ 未开始 |
-| Android 打包 | ⬜ 未开始 |
+| APK 签名 | ⬜ 未开始，需 keystore |
+| 浏览器自动填充 | ⬜ 未开始 |
 
 ```bash
 cargo test --workspace   # 39 核心 + 6 外壳 + 1 文档测试
@@ -196,6 +199,45 @@ cargo install tauri-cli --version "^2.0"
 ### 2. 界面
 
 设计稿的 CSS（`nocturne.css`）可以直接复用，不用重画。7 个屏幕的结构和中英双语文案原型里都有。
+
+### Android
+
+`lokal-core` 一行不用改就能跑在 Android 上——安全核心不依赖 GUI 的分层在这里兑现了。
+
+前置（Ubuntu）：
+
+```bash
+sudo apt install -y openjdk-21-jdk
+rustup target add aarch64-linux-android armv7-linux-androideabi i686-linux-android x86_64-linux-android
+```
+
+再装 Android SDK（[命令行工具](https://developer.android.com/studio#command-line-tools-only)解压到
+`~/Android/sdk/cmdline-tools/latest`），然后：
+
+```bash
+sdkmanager "platform-tools" "platforms;android-35" "build-tools;35.0.0" "ndk;28.2.13676358"
+```
+
+构建：
+
+```bash
+export ANDROID_HOME=~/Android/sdk
+export NDK_HOME=$ANDROID_HOME/ndk/28.2.13676358
+cargo tauri android init      # 只需一次
+cargo tauri android build --apk --target aarch64
+```
+
+产物在 `src-tauri/gen/android/app/build/outputs/apk/`，实测 15 MB，
+包名 `app.lokal.vault`，minSdk 24 / targetSdk 36。
+
+**Android 上的差异**：自动备份不可用。dialog 插件的 `pick_folder` 是 `#[cfg(desktop)]` 的，
+Android 拿不到任意目录的持久写权限（需要 Storage Access Framework 的 persistable URI 授权）。
+这里选择明确报错，而不是退而求其次写进应用私有目录——那个目录随卸载消失、又和保险库同在一块存储上，
+挡不住任何一种真实的数据丢失。**一个让人以为自己有备份、实际什么都没保护的功能，比没有这个功能更糟。**
+手动「导出备份…」在 Android 上是可用的。
+
+**APK 未签名**，装不上真机。要发布得先建 keystore 并配 `key.properties`
+（已在 `.gitignore` 里）——目前 release 流程只出 Linux 产物。
 
 ### 3. 尚未实现
 
