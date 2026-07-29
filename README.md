@@ -16,7 +16,8 @@
 一个本地优先的密码管理器。无账号、无云端、不同步。
 
 - **`crates/lokal-core`** — 安全核心：加密、存储、密码生成、强度评估。纯 Rust，不依赖 GUI，可独立测试。
-- **`src-tauri` / `ui`** — Tauri 外壳（尚未创建，见下文「下一步」）。
+- **`src-tauri`** — Tauri 外壳：把核心暴露给界面的命令层，密码默认不下发到前端。
+- **`ui`** — 界面：Nocturne 设计系统的七屏，纯 HTML/CSS/JS，无构建步骤。
 
 设计稿来自 Claude Design 的 Nocturne 主题原型（7 屏：引导 → 创建 PIN → 解锁 → 密码库 → 详情 → 编辑 → 设置）。
 
@@ -44,7 +45,7 @@
 | 浏览器自动填充 | ⬜ 未开始 |
 
 ```bash
-cargo test --workspace   # 39 核心 + 6 外壳 + 1 文档测试
+cargo test --workspace   # 39 核心 + 11 外壳 + 1 文档测试
 cargo clippy --workspace --all-targets
 cargo run -p lokal       # 启动应用
 cargo run --release --example kdf_bench      # 在你的硬件上重新测 KDF 耗时
@@ -180,25 +181,17 @@ cargo run --release --example verify_backup -- <备份文件>   # 校验一份�
 
 ---
 
-## 下一步
+## 开发
 
-### 1. 装 Tauri 的系统依赖（需要 sudo）
-
-本机是 Ubuntu 24.04，缺 4 个包：
+### 桌面（Ubuntu / Debian）
 
 ```bash
-sudo apt update && sudo apt install -y libwebkit2gtk-4.1-dev libxdo-dev libayatana-appindicator3-dev librsvg2-dev
-```
-
-然后装 CLI：
-
-```bash
+sudo apt install -y libwebkit2gtk-4.1-dev libxdo-dev libayatana-appindicator3-dev librsvg2-dev
 cargo install tauri-cli --version "^2.0"
+cargo run -p lokal
 ```
 
-### 2. 界面
-
-设计稿的 CSS（`nocturne.css`）可以直接复用，不用重画。7 个屏幕的结构和中英双语文案原型里都有。
+工具链版本由 `rust-toolchain.toml` 钉死，本地和 CI 用的是同一个。
 
 ### Android
 
@@ -239,9 +232,9 @@ Android 拿不到任意目录的持久写权限（需要 Storage Access Framewor
 **APK 未签名**，装不上真机。要发布得先建 keystore 并配 `key.properties`
 （已在 `.gitignore` 里）——目前 release 流程只出 Linux 产物。
 
-### 3. 尚未实现
+## 路线图
 
-- PIN / 生物识别解锁（第二个 wrap slot，见上）
-- 加密备份导出（`.lokal` 文件）
-- Android 打包（Tauri v2 支持，需配 SDK/NDK）
-- 浏览器自动填充
+- **APK 签名** — 建 keystore、配 `key.properties`，release 流程才能出可安装的 Android 产物
+- **PIN / 生物识别解锁** — 第二个 wrap slot，仅在有硬件限速托底的平台上启用（见「安全边界」第 3 条）
+- **浏览器自动填充** — 扩展 + 本地通信协议。用起来最舒服，但会显著扩大攻击面，值得单独做一轮安全设计
+- **Android 上的自动备份** — 需要 Storage Access Framework 的 persistable URI 授权
