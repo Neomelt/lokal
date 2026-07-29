@@ -105,9 +105,22 @@ jobs:
           keyPassword=$KEY_PASSWORD
           EOF
 
+      - name: 定位 NDK
+        # 注意不能写成 `env: NDK_HOME: ${{ env.ANDROID_NDK_LATEST_HOME }}`：
+        # Actions 的 env 上下文只含 workflow 自己定义的变量，读不到 runner
+        # 镜像预设的操作系统环境变量，结果是空串（实际踩过，报
+        # "Android NDK invalid"）。在 shell 里用 $VAR 才读得到。
+        run: |
+          NDK="${ANDROID_NDK_LATEST_HOME:-}"
+          # 镜像换了变量名也不至于直接崩：退回到 SDK 目录下找最新的一个。
+          if [ -z "$NDK" ] || [ ! -d "$NDK" ]; then
+            NDK=$(find "$ANDROID_HOME/ndk" -maxdepth 1 -mindepth 1 -type d | sort -V | tail -1)
+          fi
+          test -n "$NDK" && test -d "$NDK" || { echo "找不到 NDK"; exit 1; }
+          echo "使用 NDK: $NDK"
+          echo "NDK_HOME=$NDK" >> "$GITHUB_ENV"
+
       - name: 构建 APK
-        env:
-          NDK_HOME: ${{ env.ANDROID_NDK_LATEST_HOME }}
         run: |
           cargo install tauri-cli --version "^2.0" --locked
           cargo tauri android build --apk --target aarch64 -- --locked
