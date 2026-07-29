@@ -439,6 +439,7 @@ fn list_auto_backups(dir: &std::path::Path) -> Vec<String> {
 ///
 /// 立刻备份是有意的：如果等到下次改动才写第一份，用户点完开关看到
 /// 目录里空空如也，无从判断到底配好没有。
+#[cfg(desktop)]
 #[tauri::command]
 async fn set_auto_backup(
     app: tauri::AppHandle,
@@ -464,6 +465,25 @@ async fn set_auto_backup(
         auto_backup(v, &dir, v.settings().auto_backup_keep)
     })?;
     Ok(dir.display().to_string())
+}
+
+/// Android 上暂不提供自动备份。
+///
+/// dialog 插件的 `pick_folder` 是 `#[cfg(desktop)]` 的，Android 拿不到
+/// 任意目录的持久写权限——那需要走 Storage Access Framework 的
+/// persistable URI 授权，插件没有暴露。
+///
+/// 这里**明确报错而不是退而求其次**写进应用私有目录：那个目录会随卸载一起
+/// 消失，且和保险库在同一块存储上，挡不住任何一种真实的数据丢失。
+/// 一个让人以为自己有备份、实际什么都没保护的功能，比没有这个功能更糟。
+/// 手动「导出备份…」在 Android 上是可用的（save_file 两个平台都支持）。
+#[cfg(mobile)]
+#[tauri::command]
+async fn set_auto_backup(
+    _app: tauri::AppHandle,
+    _state: tauri::State<'_, VaultState>,
+) -> Result<String, String> {
+    Err("Android 上暂不支持自动备份目录（需要 Storage Access Framework 授权）。请用「导出备份…」手动导出。".into())
 }
 
 /// 关闭自动备份。**不删已有的备份文件**——那是用户的数据，不是我们的缓存。
