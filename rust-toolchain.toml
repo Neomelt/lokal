@@ -1,0 +1,10 @@
+# 钉死工具链版本。
+#
+# 不写 "stable"：那样本地和 CI 会在不同时间装到不同版本，
+# "在我机器上是绿的" 就失去意义。rustfmt 的输出、clippy 的 lint 集合
+# 都会随版本变化——一个不固定工具链的绿色 CI 只是巧合。
+#
+# 升级时改这里一处，本地和 CI 同步生效。
+[toolchain]
+channel = "1.95.0"
+components = ["rustfmt", "clippy"]
