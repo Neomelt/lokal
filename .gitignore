@@ -1,4 +1,11 @@
 /target
 **/target
+
+# 保险库和备份文件——绝不能进版本库。
+# 它们是加密的，但把自己的密码库推上公开仓库仍然是把攻击面
+# 从"能碰到我硬盘的人"扩大到"全世界"，主口令成了唯一防线。
 *.lokal
 *.lokal.tmp
+
+# tauri-build 每次构建重新生成的 ACL schema。
+src-tauri/gen/schemas/
