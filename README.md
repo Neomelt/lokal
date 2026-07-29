@@ -183,15 +183,36 @@ cargo run --release --example verify_backup -- <备份文件>   # 校验一份�
 
 ## 开发
 
-### 桌面（Ubuntu / Debian）
+### 桌面
+
+Ubuntu / Debian：
 
 ```bash
 sudo apt install -y libwebkit2gtk-4.1-dev libxdo-dev libayatana-appindicator3-dev librsvg2-dev
+```
+
+Fedora / RHEL（包名与 Debian 系不同，照抄 apt 那行会找不到包）：
+
+```bash
+sudo dnf install -y webkit2gtk4.1-devel libxdo-devel libappindicator-gtk3-devel librsvg2-devel openssl-devel curl wget file
+```
+
+| Debian 系 | Red Hat 系 |
+|---|---|
+| `libwebkit2gtk-4.1-dev` | `webkit2gtk4.1-devel` |
+| `libxdo-dev` | `libxdo-devel` |
+| `libayatana-appindicator3-dev` | `libappindicator-gtk3-devel` |
+| `librsvg2-dev` | `librsvg2-devel` |
+
+然后：
+
+```bash
 cargo install tauri-cli --version "^2.0"
 cargo run -p lokal
 ```
 
-工具链版本由 `rust-toolchain.toml` 钉死，本地和 CI 用的是同一个。
+Rust 版本不用手动选——`rust-toolchain.toml` 钉死了版本，rustup 会自动装对，
+本地和 CI 用的是同一个工具链。
 
 ### Android
 
