@@ -51,3 +51,26 @@ jobs:
 
       - name: 测试
         run: cargo test --workspace --locked
+
+  android:
+    name: Android 目标编译检查
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+
+      # 只做 cargo check，不跑 Gradle 打包。
+      #
+      # 这一步专门拦一类真实存在的 bug：dialog 插件的 pick_folder 是
+      # #[cfg(desktop)] 的，桌面端编译得好好的代码，一到 Android 就报
+      # "no method named blocking_pick_folder"。这个坑本项目实际踩过一次。
+      # 完整 Gradle 构建要好几分钟，而 cargo check 半分钟就能抓到同一类问题。
+      - name: 添加 Android 目标
+        run: rustup target add aarch64-linux-android
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          key: android
+
+      # GitHub 的 ubuntu runner 预装了 Android SDK/NDK，直接用。
+      - name: 检查 aarch64-linux-android
+        run: cargo check -p lokal --target aarch64-linux-android --locked
