@@ -1,0 +1,325 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lokal</title>
+<link rel="stylesheet" href="nocturne.css">
+<link rel="stylesheet" href="app.css">
+</head>
+<body>
+
+<!-- 引导 -->
+<section id="s-onboard" class="screen pad">
+  <div class="mark-box">
+    <svg viewBox="0 0 16 16" width="26" height="26" aria-hidden="true">
+      <rect x="3" y="7" width="10" height="7" rx="2" fill="var(--color-accent-300)"></rect>
+      <path d="M5.5 7V5.5a2.5 2.5 0 0 1 5 0V7" fill="none" stroke="var(--color-accent-300)" stroke-width="1.6"></path>
+    </svg>
+  </div>
+  <h1 class="hero">你的密码。<br>只存在这台设备。<br><span class="accent">别无他处。</span></h1>
+  <ul class="bullets">
+    <li>加密保存在本地文件 — 无账号、无云端、不同步。</li>
+    <li>由主口令保护（Argon2id + XChaCha20-Poly1305）。</li>
+    <li>完全离线运行，任何数据都不会离开这台机器。</li>
+  </ul>
+  <div class="spacer"></div>
+  <button class="btn btn-primary btn-block tall" id="btn-start">创建我的密码库</button>
+  <p class="foot-note">无需邮箱，无需注册。</p>
+</section>
+
+<!-- 创建主口令 -->
+<section id="s-setup" class="screen pad hidden">
+  <h2 class="title">设置主口令</h2>
+  <p class="sub">这是打开密码库的唯一钥匙。忘记它 = 数据永久丢失，没有找回途径。</p>
+  <div class="field mt-6">
+    <label for="setup-pw">主口令</label>
+    <input class="input" type="password" id="setup-pw" placeholder="至少 8 个字符，建议用长短语" autocomplete="new-password">
+  </div>
+  <div class="meter-row">
+    <div class="meter"><div class="meter-fill" id="setup-bar"></div></div>
+    <span class="meter-label" id="setup-lbl"></span>
+  </div>
+  <div class="field mt-4">
+    <label for="setup-pw2">再输一次</label>
+    <input class="input" type="password" id="setup-pw2" placeholder="确认主口令" autocomplete="new-password">
+  </div>
+  <p class="err" id="setup-err"></p>
+  <div class="spacer"></div>
+  <button class="btn btn-primary btn-block tall" id="btn-create">创建密码库</button>
+</section>
+
+<!-- 解锁 -->
+<section id="s-unlock" class="screen pad center hidden">
+  <div class="brand">
+    <svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true">
+      <rect x="3" y="7" width="10" height="7" rx="2" fill="var(--color-accent)"></rect>
+      <path d="M5.5 7V5.5a2.5 2.5 0 0 1 5 0V7" fill="none" stroke="var(--color-accent)" stroke-width="1.6"></path>
+    </svg>
+    <span>Lokal</span>
+  </div>
+  <div class="lock-ring">
+    <svg viewBox="0 0 16 16" width="34" height="34" aria-hidden="true">
+      <rect x="3" y="7" width="10" height="7" rx="2" fill="var(--color-accent)"></rect>
+      <path d="M5.5 7V5.5a2.5 2.5 0 0 1 5 0V7" fill="none" stroke="var(--color-accent)" stroke-width="1.6"></path>
+    </svg>
+  </div>
+  <p class="sub center-text">输入主口令解锁</p>
+  <form id="unlock-form" class="w-full">
+    <div class="field">
+      <label class="sr-only" for="unlock-pw">主口令</label>
+      <input class="input" type="password" id="unlock-pw" placeholder="主口令" autocomplete="current-password">
+    </div>
+    <p class="err" id="unlock-err"></p>
+    <button class="btn btn-primary btn-block tall mt-3" type="submit">解锁</button>
+  </form>
+  <div class="spacer"></div>
+</section>
+
+<!-- 密码库 -->
+<section id="s-vault" class="screen hidden">
+  <header class="vault-head">
+    <div class="row">
+      <svg viewBox="0 0 16 16" width="17" height="17" aria-hidden="true">
+        <rect x="3" y="7" width="10" height="7" rx="2" fill="var(--color-accent)"></rect>
+        <path d="M5.5 7V5.5a2.5 2.5 0 0 1 5 0V7" fill="none" stroke="var(--color-accent)" stroke-width="1.6"></path>
+      </svg>
+      <span class="brand-name">Lokal</span>
+      <button class="btn btn-secondary btn-icon round" id="btn-lock" title="锁定">
+        <svg viewBox="0 0 16 16" width="15" height="15" aria-hidden="true">
+          <rect x="3" y="7" width="10" height="7" rx="2" fill="var(--color-neutral-500)"></rect>
+          <path d="M5.5 7V5.5a2.5 2.5 0 0 1 5 0V7" fill="none" stroke="var(--color-neutral-500)" stroke-width="1.6"></path>
+        </svg>
+      </button>
+      <button class="btn btn-secondary btn-icon round" id="btn-settings" title="设置">
+        <svg viewBox="0 0 16 16" width="15" height="15" aria-hidden="true">
+          <circle cx="8" cy="3.2" r="1.3" fill="var(--color-neutral-500)"></circle>
+          <circle cx="8" cy="8" r="1.3" fill="var(--color-neutral-500)"></circle>
+          <circle cx="8" cy="12.8" r="1.3" fill="var(--color-neutral-500)"></circle>
+        </svg>
+      </button>
+    </div>
+    <p class="count" id="vault-count"></p>
+    <div class="search">
+      <svg viewBox="0 0 16 16" width="15" height="15" aria-hidden="true">
+        <circle cx="7" cy="7" r="4.5" fill="none" stroke="var(--color-neutral-600)" stroke-width="1.5"></circle>
+        <line x1="10.5" y1="10.5" x2="14" y2="14" stroke="var(--color-neutral-600)" stroke-width="1.5"></line>
+      </svg>
+      <input id="search" placeholder="搜索密码库" autocomplete="off">
+    </div>
+    <div class="chips" id="chips"></div>
+  </header>
+  <div class="list-wrap">
+    <div class="list" id="entry-list"></div>
+    <p class="empty hidden" id="empty-msg">没有匹配的条目</p>
+  </div>
+  <button class="fab" id="btn-add" title="新建条目">+</button>
+</section>
+
+<!-- 条目详情 -->
+<section id="s-detail" class="screen hidden">
+  <header class="bar">
+    <button class="btn btn-icon btn-secondary round plain" id="btn-back-detail" title="返回">
+      <svg viewBox="0 0 16 16" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M10 3L5 8l5 5"></path></svg>
+    </button>
+    <div class="spacer"></div>
+    <button class="btn btn-secondary" id="btn-edit">编辑</button>
+    <button class="btn btn-primary" id="btn-delete">删除</button>
+  </header>
+  <div class="scroll pad-x">
+    <div class="row gap-4 mt-4">
+      <div class="avatar lg" id="d-initial"></div>
+      <div>
+        <h2 class="title" id="d-name"></h2>
+        <span class="tag tag-accent" id="d-cat"></span>
+      </div>
+    </div>
+    <div class="card-stack mt-5">
+      <div class="cell">
+        <div class="grow">
+          <div class="kicker">用户名</div>
+          <div class="val" id="d-user"></div>
+        </div>
+        <button class="btn btn-ghost sm" data-copy="user">复制</button>
+      </div>
+      <div class="cell col">
+        <div class="row">
+          <div class="grow">
+            <div class="kicker">密码</div>
+            <div class="val mono" id="d-pw">••••••••••••</div>
+          </div>
+          <button class="btn btn-ghost sm muted" id="btn-reveal">显示</button>
+          <button class="btn btn-ghost sm" data-copy="pw">复制</button>
+        </div>
+        <div class="meter-row">
+          <div class="meter"><div class="meter-fill" id="d-bar"></div></div>
+          <span class="meter-label" id="d-str"></span>
+        </div>
+      </div>
+      <div class="cell">
+        <div class="grow">
+          <div class="kicker">网站</div>
+          <div class="val dim" id="d-url"></div>
+        </div>
+        <button class="btn btn-ghost sm" data-copy="url">复制</button>
+      </div>
+    </div>
+    <div class="card-stack mt-3 hidden" id="d-notes-wrap">
+      <div class="cell col">
+        <div class="kicker">备注</div>
+        <div class="notes" id="d-notes"></div>
+      </div>
+    </div>
+    <p class="foot-note mt-5">本地加密 · 永不离开这台机器</p>
+  </div>
+</section>
+
+<!-- 新建 / 编辑 -->
+<section id="s-edit" class="screen hidden">
+  <header class="bar">
+    <button class="btn btn-icon btn-secondary round plain" id="btn-back-edit" title="返回">
+      <svg viewBox="0 0 16 16" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M10 3L5 8l5 5"></path></svg>
+    </button>
+    <h2 class="title sm grow" id="edit-title">新建条目</h2>
+    <button class="btn btn-primary" id="btn-save">保存</button>
+  </header>
+  <div class="scroll pad form-gap">
+    <div class="field"><label for="f-name">名称</label>
+      <input class="input" id="f-name" placeholder="例如：北风银行"></div>
+    <div class="field"><label for="f-user">用户名 / 邮箱</label>
+      <input class="input" id="f-user" placeholder="you@example.com" autocomplete="off"></div>
+    <div class="field">
+      <div class="row baseline"><label class="grow" for="f-pw">密码</label>
+        <button class="btn btn-ghost sm" id="btn-gen">生成</button></div>
+      <input class="input mono" id="f-pw" type="text" placeholder="••••••••" autocomplete="off">
+      <div class="meter-row">
+        <div class="meter"><div class="meter-fill" id="f-bar"></div></div>
+        <span class="meter-label" id="f-str"></span>
+      </div>
+    </div>
+    <div class="field"><label for="f-url">网站（可选）</label>
+      <input class="input" id="f-url" placeholder="example.com" autocomplete="off"></div>
+    <div class="field"><label>分类</label>
+      <div class="chips" id="cat-picks"></div></div>
+    <div class="field"><label for="f-notes">备注（可选）</label>
+      <textarea class="input" id="f-notes" placeholder="恢复代码、提示…" rows="3"></textarea></div>
+    <p class="err" id="edit-err"></p>
+  </div>
+</section>
+
+<!-- 设置 -->
+<section id="s-settings" class="screen hidden">
+  <header class="bar">
+    <button class="btn btn-icon btn-secondary round plain" id="btn-back-settings" title="返回">
+      <svg viewBox="0 0 16 16" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M10 3L5 8l5 5"></path></svg>
+    </button>
+    <h2 class="title sm grow">设置</h2>
+  </header>
+  <div class="scroll pad">
+    <h3 class="section-label">安全</h3>
+    <div class="card-stack">
+      <div class="cell col">
+        <div class="kicker">更换主口令</div>
+        <p class="hint">只重新加密 32 字节的密钥，条目密文一个字节都不动。</p>
+        <input class="input mt-2" type="password" id="set-newpw" placeholder="新主口令（至少 8 字符）" autocomplete="new-password">
+        <button class="btn btn-secondary btn-block mt-2" id="btn-chpw">更换</button>
+      </div>
+    </div>
+
+    <h3 class="section-label mt-5">数据</h3>
+    <div class="card-stack">
+      <div class="cell">
+        <div class="grow"><div class="kicker">条目数</div><div class="val" id="st-count">—</div></div>
+      </div>
+      <div class="cell">
+        <div class="grow"><div class="kicker">密码库大小</div><div class="val" id="st-size">—</div></div>
+      </div>
+      <div class="cell col">
+        <div class="kicker">加密备份</div>
+        <p class="hint">导出的是完整保险库：自包含、已加密，用当前主口令打开。放网盘或 U 盘都不会泄露内容。换过主口令后记得重新导出——旧备份只认旧口令。</p>
+        <button class="btn btn-secondary btn-block mt-2" id="btn-export">导出备份…</button>
+        <button class="btn btn-secondary btn-block mt-2" id="btn-import">从备份恢复…</button>
+      </div>
+      <div class="cell col">
+        <div class="kicker">自动备份</div>
+        <p class="hint" id="auto-status">未开启</p>
+        <p class="hint mono tiny dim hidden" id="auto-dir"></p>
+        <p class="err" id="auto-error"></p>
+        <button class="btn btn-secondary btn-block mt-2" id="btn-auto-on">开启自动备份…</button>
+        <button class="btn btn-secondary btn-block mt-2 hidden" id="btn-auto-off">关闭自动备份</button>
+      </div>
+    </div>
+
+    <h3 class="section-label mt-5 danger-label">危险操作</h3>
+    <div class="card-stack">
+      <div class="cell col">
+        <div class="kicker">清除所有数据</div>
+        <p class="hint">永久删除本设备上的全部条目，不可撤销。</p>
+        <button class="btn btn-secondary btn-block mt-2 danger" id="btn-erase">清除所有条目</button>
+      </div>
+    </div>
+    <p class="foot-note mt-5">Lokal 0.1.0 · 完全离线 · 无遥测</p>
+  </div>
+</section>
+
+<!-- 密码生成器 -->
+<div class="dialog-backdrop hidden" id="gen-modal">
+  <div class="dialog">
+    <div class="dialog-title">密码生成器</div>
+    <div class="dialog-body">
+      <div class="gen-out mono" id="gen-out"></div>
+      <label class="slider-label" for="gen-len">长度 <span id="gen-len-val">20</span></label>
+      <input type="range" id="gen-len" min="8" max="64" value="20" class="slider">
+      <div class="chips mt-3">
+        <button class="chip on" id="gen-num">123 数字</button>
+        <button class="chip on" id="gen-sym">!@# 符号</button>
+        <button class="chip" id="gen-again">↻ 换一个</button>
+      </div>
+    </div>
+    <div class="dialog-actions">
+      <button class="btn btn-ghost" id="gen-cancel">取消</button>
+      <button class="btn btn-primary" id="gen-use">使用此密码</button>
+    </div>
+  </div>
+</div>
+
+<!-- 从备份恢复 -->
+<div class="dialog-backdrop hidden" id="restore-modal">
+  <div class="dialog">
+    <div class="dialog-title">从备份恢复</div>
+    <div class="dialog-body">
+      <div class="kicker">备份文件</div>
+      <p class="val tiny dim" id="restore-path"></p>
+      <div class="field mt-3">
+        <label for="restore-pw">该备份的主口令</label>
+        <input class="input" type="password" id="restore-pw" placeholder="备份创建时使用的主口令" autocomplete="off">
+      </div>
+      <p class="hint">若导出之后换过主口令，这里要填<em>当时</em>那一个。</p>
+      <p class="err" id="restore-err"></p>
+      <p class="hint hidden" id="restore-summary"></p>
+    </div>
+    <div class="dialog-actions">
+      <button class="btn btn-ghost" id="restore-cancel">取消</button>
+      <button class="btn btn-primary" id="restore-check">校验备份</button>
+      <button class="btn btn-primary danger hidden" id="restore-confirm">覆盖并恢复</button>
+    </div>
+  </div>
+</div>
+
+<!-- 确认对话框 -->
+<div class="dialog-backdrop hidden" id="confirm-modal">
+  <div class="dialog">
+    <div class="dialog-title" id="confirm-title">确认</div>
+    <div class="dialog-body"><p id="confirm-msg"></p></div>
+    <div class="dialog-actions">
+      <button class="btn btn-ghost" id="confirm-no">取消</button>
+      <button class="btn btn-primary danger" id="confirm-yes">确定</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast hidden" id="toast"></div>
+
+<script src="app.js"></script>
+</body>
+</html>
