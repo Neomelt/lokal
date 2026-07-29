@@ -10,7 +10,13 @@
 
 pub mod crypto;
 pub mod error;
+pub mod generator;
+pub mod model;
 pub mod secret;
+pub mod strength;
 
 pub use error::{Error, Result};
+pub use generator::GenOptions;
+pub use model::{Category, Entry, VaultData, VaultSettings};
 pub use secret::{Key32, Secret};
+pub use strength::{Assessment, Strength, assess};
