@@ -1,0 +1,53 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+# 同一分支的旧运行没必要跑完。
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  check:
+    name: 格式 / lint / 测试
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+
+      # lokal-core 本身不需要这些；是 Tauri 外壳要链接 webkit2gtk。
+      # 装上才能跑 `--workspace` 的全部测试。
+      - name: 安装 Tauri 的系统依赖
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            libwebkit2gtk-4.1-dev \
+            libxdo-dev \
+            libayatana-appindicator3-dev \
+            librsvg2-dev
+
+      # 工具链版本由 rust-toolchain.toml 决定，这里不指定，
+      # 免得两处版本各说各话。
+      - name: 显示工具链
+        run: |
+          rustc --version
+          cargo --version
+
+      - uses: Swatinem/rust-cache@v2
+
+      - name: 格式
+        run: cargo fmt --all --check
+
+      # --locked：拒绝隐式更新 Cargo.lock。CI 必须构建被提交的那份依赖，
+      # 而不是今天恰好能解析出的最新版——否则上游发个新版本就可能让
+      # 一次未改动代码的构建变红或（更糟）变绿。
+      - name: Clippy
+        run: cargo clippy --workspace --all-targets --locked -- -D warnings
+
+      - name: 测试
+        run: cargo test --workspace --locked

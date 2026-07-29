@@ -1,0 +1,62 @@
+name: Release
+
+# 打 v* 标签触发。发布流程刻意和 CI 分开：CI 每次推送都跑、要快；
+# 发布只在明确打标签时跑、要全。
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write # 创建 release、上传产物需要
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  linux:
+    name: Linux 构建与发布
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: 安装 Tauri 的系统依赖
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            libwebkit2gtk-4.1-dev \
+            libxdo-dev \
+            libayatana-appindicator3-dev \
+            librsvg2-dev
+
+      - uses: Swatinem/rust-cache@v2
+
+      # 发版前再跑一遍测试。CI 已经跑过，但标签可能打在任意提交上，
+      # 而"这个提交的测试是绿的"必须在产物发出去之前当场确认，
+      # 不能依赖"记得那次 CI 是绿的"。
+      - name: 测试
+        run: cargo test --workspace --locked
+
+      - uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tagName: ${{ github.ref_name }}
+          releaseName: Lokal ${{ github.ref_name }}
+          releaseBody: |
+            ## ⚠️ 学习项目，未经安全审计
+
+            **不要把真实密码放进去。** 详见 README。
+
+            ### 产物
+            - `.deb` —— Debian / Ubuntu
+            - `.AppImage` —— 通用 Linux
+
+            ### 校验备份
+            ```
+            cargo run --release --example verify_backup -- <备份文件>
+            ```
+          # 草稿：产物传上来后由人过目再发布。
+          # 发布是不可逆的对外动作，不该由一次 git push 直接完成。
+          releaseDraft: true
+          prerelease: false
+          args: --locked
