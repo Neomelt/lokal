@@ -59,4 +59,6 @@ jobs:
           # 发布是不可逆的对外动作，不该由一次 git push 直接完成。
           releaseDraft: true
           prerelease: false
-          args: --locked
+          # `--locked` 是 cargo 的参数，不是 tauri build 的。必须放在 `--`
+          # 之后透传给底层 runner，否则 tauri 会报 unexpected argument。
+          args: -- --locked
