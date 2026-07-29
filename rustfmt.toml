@@ -1,0 +1,7 @@
+# 宽一点、紧凑一点。
+#
+# `use_small_heuristics = "Max"` 允许结构体字面量、函数调用等在一行内写完，
+# 只要不超过 max_width。默认值会把 `KdfParams { m_cost: 8, t_cost: 1, p_cost: 1 }`
+# 拆成五行——对这种参数组合来说，拆开反而更难一眼看懂。
+max_width = 100
+use_small_heuristics = "Max"
