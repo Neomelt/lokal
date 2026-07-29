@@ -39,9 +39,9 @@
 | 剪贴板 30 秒自动清空 | ✅ 完成 |
 | Android 打包（APK） | ✅ 完成，实测 15 MB / arm64 |
 | CI（fmt / clippy / test / Android check） | ✅ 完成 |
-| Release 流程（打 v* 标签 → 草稿 release） | ✅ 完成，Linux 产物 |
+| Release 流程（打 v* 标签 → 草稿 release） | ✅ 完成，Linux 产物已验证 |
+| APK 签名 + CI 出 APK | ✅ 完成，需配 keystore 后启用 |
 | PIN / 生物识别解锁 | ⬜ 未开始，需硬件托底，见「安全边界」 |
-| APK 签名 | ⬜ 未开始，需 keystore |
 | 浏览器自动填充 | ⬜ 未开始 |
 
 ```bash
@@ -229,12 +229,52 @@ Android 拿不到任意目录的持久写权限（需要 Storage Access Framewor
 挡不住任何一种真实的数据丢失。**一个让人以为自己有备份、实际什么都没保护的功能，比没有这个功能更糟。**
 手动「导出备份…」在 Android 上是可用的。
 
-**APK 未签名**，装不上真机。要发布得先建 keystore 并配 `key.properties`
-（已在 `.gitignore` 里）——目前 release 流程只出 Linux 产物。
+### 发布 Android 版（APK 签名）
+
+**未签名的 APK 装不上。** 这不是"有风险提示可以忽略"——Android 的包管理器会直接拒绝。
+能忽略的那个「未知来源」提示，针对的是**已签名但不来自应用商店**的包，是另一回事。
+
+Tauri 生成的 Gradle 工程默认没有签名配置，本项目在 `app/build.gradle.kts` 里补了：
+存在 `keystore.properties` 就签名，不存在就照常构建（产物未签名）。该文件在 `.gitignore` 里。
+
+**1. 建 keystore**（密码你自己定、自己保管）：
+
+```bash
+keytool -genkeypair -v -keystore ~/lokal-release.keystore \
+  -alias lokal -keyalg RSA -keysize 4096 -validity 10000
+```
+
+> ⚠️ **把这个 keystore 备份好。** 丢了就再也无法升级已安装的应用——Android 只允许
+> 同一密钥签名的包覆盖安装，只能卸载重装，而**卸载会连保险库一起删掉**。
+
+**2. 本地签名构建**——在 `src-tauri/gen/android/keystore.properties` 写：
+
+```properties
+storeFile=/home/你/lokal-release.keystore
+storePassword=...
+keyAlias=lokal
+keyPassword=...
+```
+
+然后照常 `cargo tauri android build --apk --target aarch64`，产物是
+`app-universal-release.apk`（未签名时文件名会带 `-unsigned`，可据此一眼分辨）。
+
+**3. 让 CI 出 APK**——把密钥交给 GitHub Secrets：
+
+```bash
+base64 -w0 ~/lokal-release.keystore | gh secret set ANDROID_KEYSTORE_BASE64
+gh secret set ANDROID_STORE_PASSWORD
+gh secret set ANDROID_KEY_PASSWORD
+gh secret set ANDROID_KEY_ALIAS --body lokal
+gh variable set ANDROID_SIGNING_CONFIGURED --body true
+```
+
+最后那个变量是开关：**没设它，release 流程会跳过 Android job**，而不是产出一个装不上的
+未签名包塞进 release——那是个陷阱。流程里还有一步 `apksigner verify`，因为
+"构建成功"并不等于"签上了"：未签名时 Gradle 一样会成功，只是产物叫 `-unsigned.apk`。
 
 ## 路线图
 
-- **APK 签名** — 建 keystore、配 `key.properties`，release 流程才能出可安装的 Android 产物
 - **PIN / 生物识别解锁** — 第二个 wrap slot，仅在有硬件限速托底的平台上启用（见「安全边界」第 3 条）
 - **浏览器自动填充** — 扩展 + 本地通信协议。用起来最舒服，但会显著扩大攻击面，值得单独做一轮安全设计
 - **Android 上的自动备份** — 需要 Storage Access Framework 的 persistable URI 授权

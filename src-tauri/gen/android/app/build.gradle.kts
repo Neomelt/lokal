@@ -13,6 +13,19 @@ val tauriProperties = Properties().apply {
     }
 }
 
+// 签名配置。Tauri 生成的工程默认没有这块，所以 release APK 出来是未签名的
+// ——而未签名的包 Android 会直接拒绝安装，不是"有风险提示可以忽略"那种。
+//
+// keystore.properties 在 .gitignore 里，绝不进版本库。CI 从 GitHub Secrets
+// 还原它。本地没有这个文件时照常构建，只是产物未签名。
+val keystorePropertiesFile = rootProject.file("keystore.properties")
+val keystoreProperties = Properties().apply {
+    if (keystorePropertiesFile.exists()) {
+        keystorePropertiesFile.inputStream().use { load(it) }
+    }
+}
+val hasSigningConfig = keystorePropertiesFile.exists()
+
 android {
     compileSdk = 36
     namespace = "app.lokal.vault"
@@ -23,6 +36,16 @@ android {
         targetSdk = 36
         versionCode = tauriProperties.getProperty("tauri.android.versionCode", "1").toInt()
         versionName = tauriProperties.getProperty("tauri.android.versionName", "1.0")
+    }
+    if (hasSigningConfig) {
+        signingConfigs {
+            create("release") {
+                keyAlias = keystoreProperties.getProperty("keyAlias")
+                keyPassword = keystoreProperties.getProperty("keyPassword")
+                storeFile = file(keystoreProperties.getProperty("storeFile"))
+                storePassword = keystoreProperties.getProperty("storePassword")
+            }
+        }
     }
     buildTypes {
         getByName("debug") {
@@ -37,6 +60,9 @@ android {
             }
         }
         getByName("release") {
+            if (hasSigningConfig) {
+                signingConfig = signingConfigs.getByName("release")
+            }
             isMinifyEnabled = true
             proguardFiles(
                 *fileTree(".") { include("**/*.pro") }
